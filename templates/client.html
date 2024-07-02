@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real Time Communicate Example</title>
+</head>
+<body>
+<h1>Polling</h1>
+<div id="polling-container"></div>
+<br>
+<br>
+<br>
+<button onclick="updateServerData()">이벤트 변화 시키기</button>
+<br>
+<br>
+<br>
+<h1>Long Polling</h1>
+<div id="long-polling-container">요청을 보냈지만 아직 이벤트가 없음</div>
+<br>
+<br>
+<br>
+<h1>SSE</h1>
+<div id="sse-container">요청을 보냈지만 아직 이벤트가 없음</div>
+<script>
+    // -----------Polling------------------------
+    const pollingInterval = 10000; // 2초 간격으로 폴링
+
+    function fetchPolling() {
+        fetch('/polling')
+            .then(response => response.json())
+            .then(data => {
+                console.log("message", data);
+                updateComponent("polling-container", data.message);
+            })
+            .catch(error => {
+                console.error('Error fetching component:', error);
+            });
+    }
+
+    function updateComponent(componentId, componentName) {
+        const componentContainer = document.getElementById(componentId);
+        componentContainer.innerHTML = `<p>${componentName}</p>`;
+    }
+
+    // 주기적으로 데이터 변화 확인
+    setInterval(fetchPolling, pollingInterval);
+
+
+    // -------------Long Polling----------------
+    function fetchLongPolling() {
+        fetch('/long-polling')
+            .then(response => response.json())
+            .then(data => {
+                updateComponent("long-polling-container", data.message);
+                setTimeout(fetchLongPolling, 0);  // 즉시 다음 요청 보내기
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                setTimeout(fetchLongPolling, 5000);  // 5초 후 재시도
+            });
+    }
+
+    fetchLongPolling();
+
+    //   --- 이벤트 변화 ----
+    function updateServerData() {
+        fetch('/update', {
+            method: 'POST',
+        })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Data updated');
+                } else {
+                    console.error('Error updating data');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating data:', error);
+            });
+    }
+
+    // ---------SSE----------------
+    const eventSource = new EventSource('/sse');
+
+    eventSource.addEventListener('message', (event) => {
+      const data = JSON.parse(event.data);
+      console.log("SSE", data);
+      updateComponent("sse-container", data.message)
+    });
+
+    eventSource.addEventListener('error', (event) => {
+      console.error('EventSource error:', event);
+    });
+
+</script>
+</body>
+</html>
